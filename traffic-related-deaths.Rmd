@@ -1,0 +1,72 @@
+---
+title: " "
+pagetitle: "Traffic Related Deaths"
+
+knit: (function(inputFile, encoding) {
+      out_dir <- "html-examples";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
+
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(echarts4r)
+
+source("equity-tracker-chart-functions.R")
+
+# Order for various factors
+quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
+
+county_order <- c("King", "Kitsap", "Pierce", "Snohomish", "Region")
+
+efa_order <- c("Race/Ethnicity", "Low Income", "Disability Status", 
+               "English Proficiency", "Households with Youth <18", 
+               "Households with Older Adults 65+")
+
+focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome", 
+                           "With\ndisability", "Without\ndisability",
+                           "Limited\nEnglish\nproficiency", "English\nproficient",
+                           "Household\nwith youth", "Household\nwithout\nyouth",
+                           "Household\nwith older\nadult", "Household\nwithout\nolder adult")
+
+# Load data
+load("data/safety.rda")
+chart_data <- safety_quintile_data
+rm(safety_quintile_data)
+
+# Create Facet Column Chart
+chart <- equity_tracker_column_facet(df = chart_data,
+                                     geo = "county",
+                                     x = "quintile",
+                                     y = "Deaths per 100k people",
+                                     facet = "equity_group_ord",
+                                     title = "Traffic Related Deaths per 100k people",
+                                     y_min = 0,
+                                     y_max = 14,
+                                     dec = 1,
+                                     esttype = "number",
+                                     color = "jewel")
+
+```
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+Traffic Related Deaths per 100,000 people  
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+Five-Year Average of Traffic Related Deaths from 2018-2022  
+American Community Survey Population data by Census Tracts from 2017-2021  
+</p>
+```{r chart, echo=FALSE}
+chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+Source: Washington State Traffic Safety Commission Coded Data File
+</p> 

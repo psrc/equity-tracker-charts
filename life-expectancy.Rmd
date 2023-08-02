@@ -1,0 +1,75 @@
+---
+title: " "
+pagetitle: "Life Expectancy"
+
+knit: (function(inputFile, encoding) {
+      out_dir <- "html-examples";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
+
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(echarts4r)
+
+source("equity-tracker-chart-functions.R")
+
+# Order for various factors
+quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
+
+county_order <- c("King", "Kitsap", "Pierce", "Snohomish", "Region")
+
+efa_order <- c("Race/Ethnicity", "Low Income", "Disability Status", 
+               "English Proficiency", "Households with Youth <18", 
+               "Households with Older Adults 65+")
+
+focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome", 
+                           "With\ndisability", "Without\ndisability",
+                           "Limited\nEnglish\nproficiency", "English\nproficient",
+                           "Household\nwith youth", "Household\nwithout\nyouth",
+                           "Household\nwith older\nadult", "Household\nwithout\nolder adult")
+
+# Load data
+load("data/lifeexpectancy.rda")
+chart_data <- health_equity %>% 
+  mutate(county_ord = factor(County.Name, levels=county_order)) %>%
+  mutate(quintile_ord = str_wrap(quintile_ord, width = 6)) %>%
+  mutate(quintile_ord = factor(quintile_ord, levels = quintile_order)) %>%
+  arrange(county_ord, equity_group_ord, quintile_ord)
+rm(health_equity)
+
+# Create Facet Column Chart
+chart <- equity_tracker_column_facet(df = chart_data,
+                                     geo = "county_ord",
+                                     x = "quintile_ord",
+                                     y = "wt_life_expec",
+                                     facet = "equity_group_ord",
+                                     title = "Life Expectancy",
+                                     y_min = 50,
+                                     y_max = 90,
+                                     dec = 1,
+                                     esttype = "number",
+                                     color = "greens")
+
+```
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+Life Expectancy  
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+Weighted Average Life Expectancy by Census Tract  
+</p>
+```{r chart, echo=FALSE}
+chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+Source: Washington State Department of Health
+</p> 
