@@ -44,21 +44,39 @@ chart_data <- data_clean %>%
   mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, 12)) %>%
   mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) %>%
   distinct() %>%
-  arrange(county_ord, focus_type_ord, focus_attribute_ord)
+  arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
 rm(data_clean)
 
-# Create Facet Column Chart
-chart <- equity_tracker_column_facet(df = chart_data,
-                                     geo = "county_ord",
-                                     x = "focus_attribute_ord",
-                                     y = "fact_value",
-                                     facet = "focus_type_ord",
-                                     title = "Kindergarten Readiness",
-                                     y_min = 0,
-                                     y_max = NULL,
-                                     dec = 0,
-                                     esttype = "percent",
-                                     color = "blues")
+# Create Facet Line Chart
+
+df = chart_data
+geo = "county_ord"
+x = "data_year"
+y = "fact_value"
+facet = "focus_type_ord"
+i = 1
+color = "blues"
+title = "Kindergarten Readiness"
+y_min = 0
+y_max = NULL
+dec = 0
+esttype = "percent"
+width = '420px'
+height = '380px'
+
+max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
+facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
+num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
+
+c <- df %>%
+  dplyr::mutate(data_year = as.character(.data$data_year)) %>%
+  dplyr::filter(.data[[facet]] == facet_values[[i]]) %>%
+  dplyr::group_by(.data[[geo]]) %>%
+  echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("chart",i), width = width, height = height) %>% 
+  echarts4r::e_line_(y, smooth = FALSE) %>%
+  echarts4r::e_color(color) %>%
+  echarts4r::e_legend(show = TRUE) %>%
+  echarts4r::e_tooltip()
 
 
 ```
@@ -69,7 +87,7 @@ Kindergarten Readiness
 Calculated using the share of the population age 6+ with ...
 </p>
 ```{r chart, echo=FALSE}
-chart
+c
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 Source: Washington Office of Superindendent of Public Instruction

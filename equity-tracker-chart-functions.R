@@ -1,6 +1,6 @@
 echarts4r::e_common(font_family = "Poppins")
 
-echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color) {
+echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, width, height) {
   
   max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
   facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
@@ -22,7 +22,7 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
     dplyr::filter(.data[[facet]] == facet_values[[i]] & .data$data_year == max_year) %>%
     dplyr::mutate(!!y:= round(.data[[y]], num_dec)) %>%
     dplyr::group_by(.data[[geo]]) %>%
-    echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("chart",i)) 
+    echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("chart",i), width = width, height = height) 
   
   if (color == "blues") {
     
@@ -184,7 +184,7 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
   
 }
 
-equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues") {
+equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", width = '420px', height = '380px') {
   
   num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
   
@@ -193,7 +193,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                             facet = facet, title = title, dec = dec, 
                             y_min = y_min, y_max = y_max,
                             esttype = esttype, i = 1,
-                            color = color)
+                            color = color,
+                            width = width, height = height)
   
   # Create the second chart if there are 2 or more facets
   if (num_facets >= 2) {
@@ -202,7 +203,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                               facet = facet, title = title, dec = dec, 
                               y_min = y_min, y_max = y_max, 
                               esttype = esttype, i = 2,
-                              color = color)
+                              color = color,
+                              width = width, height = height)
     
     if (num_facets == 2) {chart <- echarts4r::e_arrange(c1, c2, rows = 2, cols = 3) }
     
@@ -215,7 +217,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                               facet = facet, title = title, dec = dec, 
                               y_min = y_min, y_max = y_max,
                               esttype = esttype, i = 3,
-                              color = color)
+                              color = color,
+                              width = width, height = height)
     
     if (num_facets == 3) {chart <- echarts4r::e_arrange(c1, c2, c3, rows = 2, cols = 3) }
     
@@ -228,7 +231,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                               facet = facet, title = title, dec = dec, 
                               y_min = y_min, y_max = y_max,
                               esttype = esttype, i = 4,
-                              color = color)
+                              color = color,
+                              width = width, height = height)
     
     if (num_facets == 4) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, rows = 2, cols = 3) }
     
@@ -241,7 +245,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                               facet = facet, title = title, dec = dec, 
                               y_min = y_min, y_max = y_max,
                               esttype = esttype, i = 5,
-                              color = color)
+                              color = color,
+                              width = width, height = height)
     
     if (num_facets == 5) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, c5, rows = 2, cols = 3) }
     
@@ -254,7 +259,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                               facet = facet, title = title, dec = dec, 
                               y_min = y_min, y_max = y_max,
                               esttype = esttype, i = 6,
-                              color = color)
+                              color = color,
+                              width = width, height = height)
     
     if (num_facets == 6) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, c5, c6, rows = 2, cols = 3) }
     
