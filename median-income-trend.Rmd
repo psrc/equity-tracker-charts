@@ -36,15 +36,15 @@ efa_order <- c("People of Color",
                "Households with Youth <18", 
                "Households with Older Adults 65+")
 
-focus_attribute_order <- c("People of\ncolor", 
+focus_attribute_order <- c("People of color", 
                            "White\nnon-Hispanic", 
-                           "Households\nwith lower\nincome", 
+                           "Households with\nlower income", 
                            "With a\ndisability", 
                            "Without a\ndisability",
-                           "Limited\nEnglish\nproficiency", 
+                           "Limited English\nproficiency", 
                            "English\nproficient",
-                           "Households\nwith youth", 
-                           "Households\nwith older\nadults",
+                           "Households with\nyouth", 
+                           "Households with\nolder adults",
                            "Other\nhouseholds")
 
 # Load data
@@ -77,7 +77,7 @@ chart_data <- data_clean %>%
     focus_attribute== "Household without youth"~ "Other households",
     focus_attribute== "Household with older adult"~ "Households with older adults",
     focus_attribute== "Household without older adult"~ "Other households")) %>%
-  mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, 12)) %>%
+  mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, 15)) %>%
   mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) %>%
   # Remove any duplicates
   distinct() %>%
