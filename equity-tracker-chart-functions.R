@@ -77,7 +77,8 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
   c <- c %>% 
     echarts4r::e_grid(left = '15%', top = top_padding, bottom = 50) %>%
     echarts4r::e_connect(c("chart1")) %>%
-    echarts4r::e_x_axis(axisTick=list(show = FALSE)) %>%
+    echarts4r::e_x_axis(axisTick=list(show = FALSE),
+                        axisLabel = list(interval = 0L)) %>%
     echarts4r::e_show_loading() %>%
     echarts4r::e_legend(show = FALSE) %>%
     echarts4r::e_title(top = title_padding,
@@ -90,21 +91,26 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
     
     c <- c %>%
       echarts4r::e_timeline_opts(autoPlay = FALSE,
+                                 tooltip = list(show=FALSE),
                                  axis_type = "category",
-                                 top = 25,
-                                 right = 15,
-                                 left = 7,
+                                 top = 15,
+                                 right = 30,
+                                 left = 15,
                                  controlStyle=FALSE,
                                  lineStyle=FALSE,
-                                 currentIndex = 4,
+                                 #currentIndex = 4,
                                  label = list(show=TRUE,
                                               interval = 0,
                                               color='#4C4C4C',
                                               fontFamily = 'Poppins'),
                                  itemStyle = list(color='#BCBEC0'),
-                                 checkpointStyle = list(color='#4C4C4C'),
-                                 progress = list(itemStyle = list (color='#BCBEC0')),
-                                 emphasis = list(itemStyle = list (color='#4C4C4C')))
+                                 checkpointStyle = list(label = list(show=FALSE),
+                                                        color='#4C4C4C',
+                                                        animation = FALSE),
+                                 progress = list(label = list(show=FALSE),
+                                                 itemStyle = list (color='#BCBEC0')),
+                                 emphasis = list(label = list(show=FALSE),
+                                                 itemStyle = list (color='#4C4C4C')))
   } else {
     
     c <- c %>% echarts4r::e_timeline_opts(show = FALSE)
@@ -318,7 +324,8 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
     echarts4r::e_tooltip() %>%
     echarts4r::e_grid(left = '15%', top = top_padding, bottom = 50) %>%
     echarts4r::e_connect(c("chart1")) %>%
-    echarts4r::e_x_axis(axisTick=list(show = FALSE)) %>%
+    echarts4r::e_x_axis(axisTick=list(show = TRUE,
+                                      alignWithLabel = TRUE)) %>%
     echarts4r::e_show_loading() %>%
     echarts4r::e_title(top = title_padding,
                        left = 'center',
@@ -330,13 +337,14 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
     
     c <- c %>%
       echarts4r::e_timeline_opts(autoPlay = FALSE,
+                                 tooltip = list(show=FALSE),
                                  axis_type = "category",
-                                 top = 25,
-                                 right = 15,
-                                 left = 7,
+                                 top = 15,
+                                 right = 30,
+                                 left = 15,
                                  controlStyle=FALSE,
                                  lineStyle=FALSE,
-                                 currentIndex = 4,
+                                 #currentIndex = 4,
                                  label = list(show=TRUE,
                                               interval = 0,
                                               color='#4C4C4C',
@@ -491,3 +499,4 @@ equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_ma
   return(chart)
   
 }
+

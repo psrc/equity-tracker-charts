@@ -27,24 +27,61 @@ source("equity-tracker-chart-functions.R")
 # Order for various factors
 quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
 
-county_order <- c("King", "Kitsap", "Pierce", "Snohomish", "Region")
+county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 
-efa_order <- c("Race/Ethnicity", "Low Income", "Disability Status", 
-               "English Proficiency", "Households with Youth <18", 
+efa_order <- c("People of Color", 
+               "Households with Lower Income", 
+               "People with a Disability", 
+               "People with Limited English Proficiency", 
+               "Households with Youth <18", 
                "Households with Older Adults 65+")
 
-focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome", 
-                           "With\ndisability", "Without\ndisability",
-                           "Limited\nEnglish\nproficiency", "English\nproficient",
-                           "Household\nwith youth", "Household\nwithout\nyouth",
-                           "Household\nwith older\nadult", "Household\nwithout\nolder adult")
-# Load data
+focus_attribute_order <- c("People of\ncolor", 
+                           "White\nnon-Hispanic", 
+                           "Households\nwith lower\nincome", 
+                           "With a\ndisability", 
+                           "Without a\ndisability",
+                           "Limited\nEnglish\nproficiency", 
+                           "English\nproficient",
+                           "Households\nwith youth", 
+                           "Households\nwith older\nadults",
+                           "Other\nhouseholds")
+
 # Load data
 load("data/medincome.rda")
 chart_data <- data_clean %>%
+  # echarts wants axis to be factors/characters so convert year to a character
+  mutate(data_year = as.character(data_year)) %>%
+  # Update County Order
+  mutate(county_ord = factor(county_ord, levels=county_order)) %>%
+  # Update the Equity Focus Area Descriptions
+  mutate(focus_type_ord = case_when(
+    focus_type=="POC_cat"~"People of Color",
+    focus_type=="Disability_cat"~"People with a Disability",
+    focus_type=="LEP_cat"~"People with Limited English Proficiency",
+    focus_type=="Income_cat"~"Households with Lower Income",
+    focus_type=="Youth_cat"~"Households with Youth <18",
+    focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
+  mutate(focus_type_ord = factor(focus_type_ord, levels = efa_order)) %>%
+  # Update the With/Without Descriptions
+  mutate(focus_attribute_ord = case_when(
+    focus_attribute== "POC"~ "People of color",
+    focus_attribute== "Non-POC"~ "White non-Hispanic",
+    focus_attribute== "Low Income"~ "Households with lower income",
+    focus_attribute== "Non-Low Income"~ "Other households",
+    focus_attribute== "With disability"~ "With a disability",
+    focus_attribute== "Without disability"~ "Without a disability",
+    focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
+    focus_attribute== "English proficient"~ "English proficient",
+    focus_attribute== "Household with youth"~ "Households with youth",
+    focus_attribute== "Household without youth"~ "Other households",
+    focus_attribute== "Household with older adult"~ "Households with older adults",
+    focus_attribute== "Household without older adult"~ "Other households")) %>%
   mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, 12)) %>%
   mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) %>%
-  mutate(data_year = as.character(data_year)) %>%
+  # Remove any duplicates
+  distinct() %>%
+  # Sort the data to ensure the charts work
   arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
 rm(data_clean)
 

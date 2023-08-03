@@ -27,26 +27,48 @@ source("equity-tracker-chart-functions.R")
 # Order for various factors
 quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
 
-county_order <- c("King", "Kitsap", "Pierce", "Snohomish", "Region")
+county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 
-efa_order <- c("Race/Ethnicity", "Low Income", "Disability Status", 
-               "English Proficiency", "Households with Youth <18", 
+efa_order <- c("People of Color", 
+               "Households with Lower Income", 
+               "People with a Disability", 
+               "People with Limited English Proficiency", 
+               "Households with Youth <18", 
                "Households with Older Adults 65+")
 
-focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome", 
-                           "With\ndisability", "Without\ndisability",
-                           "Limited\nEnglish\nproficiency", "English\nproficient",
-                           "Household\nwith youth", "Household\nwithout\nyouth",
-                           "Household\nwith older\nadult", "Household\nwithout\nolder adult")
-# Load data
+focus_attribute_order <- c("People of\ncolor", 
+                           "White\nnon-Hispanic", 
+                           "Households\nwith lower\nincome", 
+                           "Other\nhouseholds", 
+                           "With a\ndisability", 
+                           "Without a\ndisability",
+                           "Limited\nEnglish\nproficiency", 
+                           "English\nproficient",
+                           "Households\nwith youth", 
+                           "Households\nwith older\nadult")
+
 # Load data
 load("data/lifeexpectancy.rda")
 chart_data <- health_equity %>% 
+  # echarts wants axis to be factors/characters so convert year to a character
+  mutate(data_year = as.character(data_year)) %>%
+  # Update County Order
   mutate(county_ord = factor(County.Name, levels=county_order)) %>%
+  # Update Quintile Order
   mutate(quintile_ord = str_wrap(quintile_ord, width = 6)) %>%
   mutate(quintile_ord = factor(quintile_ord, levels = quintile_order)) %>%
-  mutate(data_year = as.character(data_year)) %>%
+  # Update the Equity Focus Area Descriptions
+  mutate(equity_group_ord = case_when(
+    equity_group_ord=="Race/Ethnicity"~"People of Color",
+    equity_group_ord=="Disability Status"~"People with a Disability",
+    equity_group_ord=="English Proficiency"~"People with Limited English Proficiency",
+    equity_group_ord=="Low Income"~"Households with Lower Income",
+    equity_group_ord=="Households with Youth <18"~"Households with Youth <18",
+    equity_group_ord=="Households with Older Adults 65+"~"Households with Older Adults 65+")) %>%
+  mutate(equity_group_ord = factor(equity_group_ord, levels = efa_order)) %>%
+  # Sort the data to ensure the charts work
   arrange(county_ord, equity_group_ord, quintile_ord, data_year)
+  
 rm(health_equity)
 
 # Create Facet Line Chart
