@@ -1,6 +1,6 @@
 ---
 title: " "
-pagetitle: "Kindergarten Readiness"
+pagetitle: "Life Expectancy"
 
 knit: (function(inputFile, encoding) {
       out_dir <- "html-examples";
@@ -20,6 +20,7 @@ knit: (function(inputFile, encoding) {
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(echarts4r)
+library(psrcplot)
 
 source("equity-tracker-chart-functions.R")
 
@@ -37,58 +38,43 @@ focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome",
                            "Limited\nEnglish\nproficiency", "English\nproficient",
                            "Household\nwith youth", "Household\nwithout\nyouth",
                            "Household\nwith older\nadult", "Household\nwithout\nolder adult")
-
 # Load data
-load("data/kgreadiness.rda")
-chart_data <- data_clean %>%
-  mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, 12)) %>%
-  mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) %>%
-  distinct() %>%
-  arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
-rm(data_clean)
+# Load data
+load("data/lifeexpectancy.rda")
+chart_data <- health_equity %>% 
+  mutate(county_ord = factor(County.Name, levels=county_order)) %>%
+  mutate(quintile_ord = str_wrap(quintile_ord, width = 6)) %>%
+  mutate(quintile_ord = factor(quintile_ord, levels = quintile_order)) %>%
+  mutate(data_year = as.character(data_year)) %>%
+  arrange(county_ord, equity_group_ord, quintile_ord, data_year)
+rm(health_equity)
 
 # Create Facet Line Chart
-
-df = chart_data
-geo = "county_ord"
-x = "data_year"
-y = "fact_value"
-facet = "focus_type_ord"
-i = 1
-color = "blues"
-title = "Kindergarten Readiness"
-y_min = 0
-y_max = NULL
-dec = 0
-esttype = "percent"
-width = '420px'
-height = '380px'
-
-max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
-facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
-num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
-
-c <- df %>%
-  dplyr::mutate(data_year = as.character(.data$data_year)) %>%
-  dplyr::filter(.data[[facet]] == facet_values[[i]]) %>%
-  dplyr::group_by(.data[[geo]]) %>%
-  echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("chart",i), width = width, height = height) %>% 
-  echarts4r::e_line_(y, smooth = FALSE) %>%
-  echarts4r::e_color(color) %>%
-  echarts4r::e_legend(show = TRUE) %>%
-  echarts4r::e_tooltip()
-
+chart <- equity_tracker_line_facet(df = chart_data,
+                                   geo = "county_ord",
+                                   x = "data_year",
+                                   y = "wt_life_expec",
+                                   fill = "quintile_ord",
+                                   facet = "equity_group_ord",
+                                   title = "Life Expectancy",
+                                   y_min = 50,
+                                   y_max = 90,
+                                   dec = 1,
+                                   esttype = "number",
+                                   color = psrc_colors$greens_inc,
+                                   width = '420px',
+                                   height = '380px')
 
 ```
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-Kindergarten Readiness 
+Life Expectancy by Year
 </p>
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-Calculated using the share of the population age 6+ with ...
+Weighted Average Life Expectancy by Census Tract 
 </p>
 ```{r chart, echo=FALSE}
-c
+chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-Source: Washington Office of Superindendent of Public Instruction
+Source: Washington State Department of Health
 </p> 
