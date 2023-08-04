@@ -22,7 +22,7 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
     dplyr::filter(.data[[facet]] == facet_values[[i]] & .data$data_year == max_year) %>%
     dplyr::mutate(!!y:= round(.data[[y]], num_dec)) %>%
     dplyr::group_by(.data[[geo]]) %>%
-    echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("chart",i), width = width, height = height) 
+    echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("columnchart",i), width = width, height = height) 
   
   if (color == "blues") {
     
@@ -76,7 +76,7 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
 
   c <- c %>% 
     echarts4r::e_grid(left = '15%', top = top_padding, bottom = bottom_padding) %>%
-    echarts4r::e_connect(c("chart1")) %>%
+    echarts4r::e_connect(c("columnchart1")) %>%
     echarts4r::e_x_axis(axisTick=list(show = FALSE)) %>%
     echarts4r::e_show_loading() %>%
     echarts4r::e_legend(show = FALSE) %>%
@@ -316,7 +316,7 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
   
   c <- chart_df %>%
     dplyr::group_by(.data[[geo]]) %>%
-    echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("chart",i), width = width, height = height)
+    echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("linechart",i), width = width, height = height)
   
   for(fill_items in chart_fill) {
     c <- c %>%
@@ -328,7 +328,7 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
     echarts4r::e_legend(show = TRUE, bottom=0) %>%
     echarts4r::e_tooltip() %>%
     echarts4r::e_grid(left = '15%', top = top_padding, bottom = bottom_padding) %>%
-    echarts4r::e_connect(c("chart1")) %>%
+    echarts4r::e_connect(c("linechart1")) %>%
     echarts4r::e_x_axis(axisTick=list(show = TRUE,
                                       alignWithLabel = TRUE)) %>%
     echarts4r::e_show_loading() %>%

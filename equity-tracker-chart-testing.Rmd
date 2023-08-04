@@ -553,7 +553,8 @@ data_full <- pums_ospi_elmer %>%
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
   filter(indicator_attribute!="Total") %>%
-  dplyr::mutate(data_year_yr=format(data_year,format="%Y")) 
+  dplyr::mutate(data_year_yr=format(data_year,format="%Y")) %>%
+  dplyr::mutate(data_year = as.character(data_year))
 
 # renaming labels ----
 data_clean <- data_full %>% 
@@ -620,10 +621,10 @@ focus_attribute_order <- c("People of\ncolor", "White\nnon-Hispanic",
                            "Households\nwith older\nadult", "Other\nhouseholds 3")
 
 data_clean <- data_clean %>%
-  arrange(county_ord, focus_type_ord, focus_attribute_ord)
+  arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
 ```
 
-```{r}
+```{r, include=FALSE}
 # Create Facet Column Chart
 
 df = data_clean
@@ -660,14 +661,14 @@ chart <- equity_tracker_column_facet(df = df,
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
 `r subtitle`
 </p>
-```{r chart, echo=FALSE}
+```{r bar-chart, echo=FALSE}
 chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 `r source`
 </p> 
 
-```{r output-final-charts, include=FALSE}
+```{r output-final-bar-charts, include=FALSE}
 
 base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
 ind_dir <- 'economy'
@@ -694,6 +695,78 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
 
 ```
 
+```{r, include=FALSE}
+# Create Facet Line Chart
+df = data_clean
+geo = "county_ord"
+x = "data_year"
+y = "fact_value"
+fill = "focus_attribute_ord"
+facet = "focus_type_ord"
+y_min = 0
+y_max = 180000
+dec = 0
+esttype = "currency"
+color = "purples"
+title = "Median Household Income"
+subtitle = "values are adjusted to 2021 dollars"
+source = "Source: U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+charttype = "line"
+
+chart <- equity_tracker_line_facet(df = df,
+                                   geo = geo,
+                                   x = x,
+                                   y = y,
+                                   fill = fill,
+                                   facet = facet,
+                                   title = title,
+                                   y_min = y_min,
+                                   y_max = y_max,
+                                   dec = dec,
+                                   esttype = esttype,
+                                   color = color)
+
+```
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line-chart, echo=FALSE}
+chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+```{r output-final-line-charts, include=FALSE}
+
+base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
+ind_dir <- 'economy'
+
+# Bar Chart
+rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle,
+                                charttype = charttype),
+                  output_file = 'median-income-line.html',
+                  output_dir = file.path(base_dir,ind_dir))
+
+
+```
 
 ### b.) 
 ```{r, include=FALSE}
