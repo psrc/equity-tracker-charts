@@ -92,7 +92,7 @@ chart <- equity_tracker_line_facet(df = chart_data,
 Life Expectancy by Year
 </p>
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-Weighted Average Life Expectancy by Census Tract 
+Weighted Average Life Expectancy by Census Tract
 </p>
 ```{r chart, echo=FALSE}
 chart

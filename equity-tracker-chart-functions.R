@@ -13,9 +13,9 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
   # If ymax is provided use it, otherwise calculate it
   ifelse(is.null(y_max), max_y <- round(max_data * 1.10,0), max_y <- y_max)
   
-  # The grid spacing differs for the top 3 versus bottom 3 charts
-  ifelse(i <= 3, top_padding <- 125, top_padding <- 75)
-  ifelse(i <= 3, title_padding <- 100, title_padding <- 50)
+  ifelse(i <= 3, top_padding <- 100, top_padding <- 50)
+  ifelse(i <= 3, title_padding <- 75, title_padding <- 25)
+  ifelse(i <= 3, bottom_padding <- 75, bottom_padding <- 75)
   
   # Create the most basic chart
   c <- df %>%
@@ -75,10 +75,9 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
   }
 
   c <- c %>% 
-    echarts4r::e_grid(left = '15%', top = top_padding, bottom = 50) %>%
+    echarts4r::e_grid(left = '15%', top = top_padding, bottom = bottom_padding) %>%
     echarts4r::e_connect(c("chart1")) %>%
-    echarts4r::e_x_axis(axisTick=list(show = FALSE),
-                        axisLabel = list(interval = 0L)) %>%
+    echarts4r::e_x_axis(axisTick=list(show = FALSE)) %>%
     echarts4r::e_show_loading() %>%
     echarts4r::e_legend(show = FALSE) %>%
     echarts4r::e_title(top = title_padding,
@@ -278,6 +277,11 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
 
 echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, width, height, fill) {
   
+  if (color == "blues") {color <- psrcplot::psrc_colors$blues_inc}
+  if (color == "greens") {color <- psrcplot::psrc_colors$greens_inc}
+  if (color == "oranges") {color <- psrcplot::psrc_colors$oranges_inc}
+  if (color == "purples") {color <- psrcplot::psrc_colors$purples_inc}
+  
   max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
   facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
   num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
@@ -297,8 +301,9 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
   ifelse(is.null(y_max), max_y <- round(max_data * 1.10,0), max_y <- y_max)
   
   # The grid spacing differs for the top 3 versus bottom 3 charts
-  ifelse(i <= 3, top_padding <- 125, top_padding <- 75)
-  ifelse(i <= 3, title_padding <- 100, title_padding <- 50)
+  ifelse(i <= 3, top_padding <- 100, top_padding <- 50)
+  ifelse(i <= 3, title_padding <- 75, title_padding <- 25)
+  ifelse(i <= 3, bottom_padding <- 75, bottom_padding <- 75)
   
   # Create the Basic Chart
   chart_df <- df %>%
@@ -322,7 +327,7 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
     echarts4r::e_color(color) %>%
     echarts4r::e_legend(show = TRUE, bottom=0) %>%
     echarts4r::e_tooltip() %>%
-    echarts4r::e_grid(left = '15%', top = top_padding, bottom = 50) %>%
+    echarts4r::e_grid(left = '15%', top = top_padding, bottom = bottom_padding) %>%
     echarts4r::e_connect(c("chart1")) %>%
     echarts4r::e_x_axis(axisTick=list(show = TRUE,
                                       alignWithLabel = TRUE)) %>%

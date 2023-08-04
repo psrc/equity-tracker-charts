@@ -1,0 +1,731 @@
+---
+title: "Visuals for Equity Tracker"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+  word_document:
+  redoc::redoc: null
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+library(tidyverse)
+library(psrcelmer)
+library(psrccensus)
+library(tidycensus)
+library(psrcplot)
+library(psrctrends)
+library(sf)
+library(leaflet)
+library(rlang)
+library(magrittr)
+library(htmlwidgets) #save visuals as html
+library(scales) #number formatting
+
+```
+
+# 3 visuals for webpage
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. The inputs/variables will need to be adjusted depending on the indicator characteristics - data source and value type. 
+
+## 1. Map of most recent data
+To create the map of the most recent data, there are two different approaches that will depend on the indicator's data source. 
+
+a.) **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** If this is the case, it requires accessing data at the regional/tract level from ACS since the Elmer dataset is already aggregated to equity group/quintile. If this is the case, please start adjusting the code around line 190. 
+
+b.) **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To map data in this form, there should be a value corresponding to each census tract. Depending on the year of the data, this could be 700 rows for data at 2010 census tracts, or 900 rows for data at 2020 census tracts. If this is the case, please start adjusting the code around line 320.
+```{r legend settings, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+### a) using PUMS/OSPI data from Elmer
+```{r census tract spatial data - for pums, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+tracts20.lyr<-st_read(tracts20.url)
+tracts10.lyr<-st_read(tracts10.url)
+
+nrow(tracts20.lyr) #919
+nrow(tracts10.lyr) #773
+```
+
+```{r acs data, include=FALSE}
+# Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step----
+x <- tidycensus::load_variables(2021,"acs5") %>% 
+  dplyr::filter(grepl("median household income",
+                      concept, ignore.case=TRUE) & 
+                  (geography=="tract"))
+
+# getting data by tract
+acs_data <- get_acs_recs(geography ='tract', 
+                         table.names = 'B19013', #subject table code
+                         years = c(2021),
+                         acs.type = 'acs5')
+
+# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
+
+
+# getting population data by tract - this is to be able to calculate regional/weighted value for call outs
+acs_population <- get_acs_recs(geography ='tract',
+                      table.names = 'B01003',
+                      years = c(2021),
+                      acs.type = 'acs5') %>%
+  dplyr::rename(pop21=estimate)
+
+# merge median income data with population data
+acs_pop <- merge(acs_data, acs_population,
+                 by.x = "GEOID",
+                 by.y = "GEOID")
+
+# merge to 2020 census tract spatial file
+acs_data_tract <- merge(tracts20.lyr, acs_pop,
+                        by.x="geoid20",
+                        by.y="GEOID",
+                        all.x=TRUE)
+```
+
+```{r acs map}
+# setting map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# setting color palette
+psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
+                                      domain = acs_data_tract$estimate) # this is the value field
+
+# setting the legend/label variables
+var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
+  paste("$", # if doesn't require prefix, this can be removed
+        prettyNum((round(acs_data_tract$estimate, digits=-2)),
+                  big.mark = ","))) %>%
+  lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
+
+# map settings
+acs_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_tract$estimate),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = labels) %>% 
+
+  # legend
+  addLegend_decreasing(pal = psrc_palette,
+                       values = acs_data_tract$estimate,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       labFormat = labelFormat(prefix = "$"),
+                       decreasing = TRUE) %>% #to get legend high-low with correct color order
+  
+  # set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fixing the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix) # Convert CSS to HTML
+acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML code
+
+# printing map
+acs_map
+```
+
+```{r, include=FALSE, eval=FALSE}
+website_dev_folder <- '//WEB/website_data/equity-tracker-webpages/economy/med-income/'
+map_name <- 'medinc20.html'
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(acs_map,
+                        file=paste0(website_dev_folder, map_name))
+```
+\
+\
+
+#### Data call outs
+```{r, include=FALSE}
+
+# calculate call out information
+reg_median_income <- acs_data_tract %>% 
+  dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
+  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(pop21, na.rm=TRUE)) %>%
+  dplyr::select("reg_medinc") %>%
+  sf::st_drop_geometry() %>%
+  dplyr::pull() %>%
+  unique()
+  
+# regional median income: 104506.3
+
+# Highest Five Median Income Tracts
+highest5 <- acs_data_tract %>% 
+  dplyr::arrange(desc(estimate)) %>%
+  dplyr::slice(1:5) %>% 
+  dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
+  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(pop21, na.rm=TRUE)) %>%
+  dplyr::select("reg_medinc") %>%
+  sf::st_drop_geometry() %>%
+  dplyr::pull() %>%
+  unique()
+
+# 53033004101 (Seattle), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+
+lowest5 <- acs_data_tract %>% 
+  dplyr::arrange(estimate) %>%
+  dplyr::slice(1:5) %>% 
+  dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
+  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(pop21, na.rm=TRUE)) %>%
+  dplyr::select("reg_medinc") %>%
+  sf::st_drop_geometry() %>%
+  dplyr::pull() %>%
+  unique()
+
+# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
+# 53033030501 (Auburn, around 167)
+```
+
+1. $`r format(round(reg_median_income, -2), nsmall=0, big.mark=",")`: The region's median household income
+2. $`r format(round(highest5, -2), nsmall=0, big.mark=",")`: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
+3. $`r format(round(lowest5, -2), nsmall=0, big.mark=",")`: The lowest median income for five tracts in the region
+
+\
+
+#### Insights & Analysis
+
+* 
+* 
+* 
+* 
+
+\
+\
+
+### b) using tract level data from other source
+```{r census tract spatial data - for tract data, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+tracts20.lyr<-st_read(tracts20.url)
+tracts10.lyr<-st_read(tracts10.url)
+
+nrow(tracts20.lyr) #919
+nrow(tracts10.lyr) #773
+```
+
+```{r tract data, include=FALSE}
+# accessing tract-level data from folder/csv
+folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
+data_csv <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+
+# any data transformations that you need to do - any issues that you may have found through the exploration step should be applied here
+head(data_csv) # to look through data set
+nrow(data_csv) # check number of tracts available - if more than the expected number (700 or 900), it could be more tracts beyond the region or multiple years of data
+
+# for example, because this is a state data set we need to filter for the census tracts we want to visualize - those in our four-county region, and for this map we want to show the most recent data available
+data_csv <- data_csv %>% 
+  mutate(year=2020) %>% 
+  filter(County.Name=="King" |
+           County.Name=="Kitsap" |
+           County.Name=="Pierce" |
+           County.Name=="Snohomish")
+```
+
+```{r, include=FALSE}
+# cleaning data
+data_set <- data_csv %>%
+  dplyr::mutate(data_year=format(year,format="%Y")) %>%
+  dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
+
+# simplify data by selecting only those necessary for mapping
+colnames(data_set)
+
+data_set <- data_set %>% 
+  dplyr::select(Census.Tract, data_year, 
+                County.Name, Life.Expectancy, 
+                estimate) 
+
+# merge to census tract spatial file
+data_tract <- merge(tracts10.lyr, data_set,
+                    by.x="geoid10",
+                    by.y="Census.Tract", # this will need to be adjusted based on the field name 
+                    all.x=TRUE) %>% 
+  dplyr::mutate(pop_density_mi2 = total_pop10/(Shape__Area*3.861e-7))
+
+# check/remove NAs
+# summary(health_risk_tract20$estimate)
+```
+
+```{r tract data map}
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = data_tract$estimate)
+
+# set the variable
+var_name <- "Life Expectancy"
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid10, # the code in <> makes the geoid value italic 
+  paste(prettyNum((round(data_tract$estimate, digits=1))), " years")) %>% 
+  lapply(htmltools::HTML)
+
+# if the label required a prefix, for example a $, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract, # the code in <> makes the geoid value italic
+#   paste("$",
+#         prettyNum((round(data_tract$estimate, digits=-2)),
+#                   big.mark = ","))) %>%
+#   lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract,
+#   paste(prettyNum((round(data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=data_tract,
+              fillColor = psrc_palette(data_tract$estimate),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              # label = round(data_tract$estimate, digits=1),
+              label = labels) %>%
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = data_tract$estimate,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+```{r, include=FALSE, eval=FALSE}
+website_dev_folder <- '//WEB/website_data/equity-tracker-webpages/economy/med-income/'
+map_name <- 'lifeexpec20.html'
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(tract_map,
+                        file=paste0(website_dev_folder, map_name))
+```
+\
+\
+
+#### Data call outs
+```{r, include=FALSE, eval=FALSE}
+# calculate call out information
+data_tract_calc <- data_tract %>%
+  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+# regional average life expectancy: 78.79492
+
+x<-rep(data_tract_calc$estimate,times=data_tract_calc$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.81  
+
+data <- data_tract %>%
+  st_drop_geometry()
+
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
+```
+
+1. 78.8 years: The region's average life expectancy
+2. 80.8 years: The region's median life expectancy
+3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+
+\
+
+#### Insights & Analysis
+
+* 
+* 
+* 
+* 
+
+\
+\
+
+## 2. Facet of most recent data
+### a.) 
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
+
+# Load data
+# PUMS/OSPI data set
+pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+
+indicator_measure <- 'median_household_income'
+indicator_title <- 'Median household income'
+
+# clean data set
+data_full <- pums_ospi_elmer %>% 
+  dplyr::filter(indicator_type==indicator_measure) %>% 
+  dplyr::filter(focus_type!="Total") %>% 
+  filter(focus_attribute!="Total") %>%
+  filter(indicator_attribute!="Total") %>%
+  dplyr::mutate(data_year_yr=format(data_year,format="%Y")) 
+
+# renaming labels ----
+data_clean <- data_full %>% 
+  mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"People of Color",
+                                     focus_type=="Disability_cat"~"People with a Disability",
+                                     focus_type=="LEP_cat"~"People with Limited English Proficiency",
+                                     focus_type=="Income_cat"~"Households with Lower Income",
+                                     focus_type=="Youth_cat"~"Households with Youth <18",
+                                     focus_type=="Older_cat"~"Households with Older Adults 65+"),
+         focus_attribute_edit = case_when(focus_attribute== "POC"~ "People of color",
+                                          focus_attribute== "Non-POC"~ "White non-Hispanic",
+                                          focus_attribute== "Low Income"~ "Households with lower income",
+                                          focus_attribute== "Non-Low Income"~ "Other households",
+                                          focus_attribute== "With disability"~ "With a disability",
+                                          focus_attribute== "Without disability"~ "Without a disability",
+                                          focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
+                                          focus_attribute== "English proficient"~ "English proficient",
+                                          focus_attribute== "Household with youth"~ "Households with youth",
+                                          focus_attribute== "Household without youth"~ "Other households 2",
+                                          focus_attribute== "Household with older adult"~ "Households with older adults",
+                                          focus_attribute== "Household without older adult"~ "Other households 3"))
+
+
+
+# re-ordering variables ----
+data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
+                                    levels = c("People of Color", 
+                                               "Households with Lower Income", 
+                                               "People with a Disability",
+                                               "People with Limited English Proficiency", 
+                                               "Households with Youth <18", 
+                                               "Households with Older Adults 65+"))
+
+data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute_edit,
+                                         levels = c("People of color", "White non-Hispanic",
+                                                    "Households with lower income", "Other households",
+                                                    "With a disability", "Without a disability",
+                                                    "Limited English proficiency", "English proficient",
+                                                    "Households with youth", "Other households 2",
+                                                    "Households with older adults", "Other households 3"))
+data_clean$county_ord <- factor(data_clean$county,
+                                levels = c("King",
+                                           "Kitsap",
+                                           "Pierce",
+                                           "Snohomish",
+                                           "Region"))
+
+
+
+# Order for various factors
+quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
+
+county_order <- c("King", "Kitsap", "Pierce", "Snohomish", "Region")
+
+efa_order <- c("People of Color", "Households with Lower Income", "People with a Disability", 
+               "People with Limited English Proficiency", "Households with Youth <18", 
+               "Households with Older Adults 65+")
+
+focus_attribute_order <- c("People of\ncolor", "White\nnon-Hispanic", 
+                           "Households with\nlower income", "Other\nhouseholds", 
+                           "With a\ndisability", "Without a\ndisability",
+                           "Limited\nEnglish\nproficiency", "English\nproficient",
+                           "Households\nwith youth", "Other\nhouseholds 2",
+                           "Households\nwith older\nadult", "Other\nhouseholds 3")
+
+data_clean <- data_clean %>%
+  arrange(county_ord, focus_type_ord, focus_attribute_ord)
+```
+
+```{r}
+# Create Facet Column Chart
+
+df = data_clean
+geo = "county_ord"
+x = "focus_attribute_ord"
+y = "fact_value"
+facet = "focus_type_ord"
+y_min = 0
+y_max = 180000
+dec = 0
+esttype = "currency"
+color = "purples"
+title = "Median Household Income"
+subtitle = "values are adjusted to 2021 dollars"
+source = "Source: U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+charttype = "bar"
+
+chart <- equity_tracker_column_facet(df = df,
+                                     geo = geo,
+                                     x = x,
+                                     y = y,
+                                     facet = facet,
+                                     title = title,
+                                     y_min = y_min,
+                                     y_max = y_max,
+                                     dec = dec,
+                                     esttype = esttype,
+                                     color = color)
+
+```
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r chart, echo=FALSE}
+chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+```{r output-final-charts, include=FALSE}
+
+base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
+ind_dir <- 'economy'
+
+# Bar Chart
+rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle,
+                                charttype = charttype),
+                  output_file = 'median-income-bar.html',
+                  output_dir = file.path(base_dir,ind_dir))
+
+
+```
+
+
+### b.) 
+```{r, include=FALSE}
+# # Elmer equity quintile tracts 
+# equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
+# 
+# # filter for data year of interest
+# equity_tracts_20 <- equity_tracts %>% 
+#   dplyr::filter(data_year==2020)
+# 
+# 
+# # join WTN health data WITH crosswalk to equity quintiles
+# health_risk_equity_tracts <- merge(health_risk_crosswalk, equity_tracts_20,
+#                                    by.x="geoid20",
+#                                    by.y="geoid", # this will need to be adjusted based on the field name
+#                                    all.x=TRUE)
+# 
+# # join WTN health data WIHTOUT crosswalk to equity quintiles
+# health_risk_equity_tracts <- merge(data_csv, equity_tracts_20,
+#                                    by.x="Census.Tract", # this will need to be adjusted based on the field name
+#                                    by.y="geoid", 
+#                                    all.x=TRUE)
+```
+
+```{r, include=FALSE}
+# # Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
+# crosswalk_10_20 <- get_table(schema="census",
+#                              tbl_name="v_geo_relationships_tracts")
+# 
+# # join cleaned tract-level data (in 2010 census tracts) to cross walk (comment out this step if the data is already in 2020 geographies)
+# data_crosswalk <- merge(crosswalk_10_20, data_csv,
+#                         by.x="geoid10",
+#                         by.y="Census.Tract", # this will need to be adjusted based on the field name
+#                         all.x=TRUE)
+```

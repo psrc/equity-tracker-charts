@@ -97,7 +97,7 @@ chart <- equity_tracker_line_facet(df = chart_data,
                                    y_max = 180000,
                                    dec = 0,
                                    esttype = "currency",
-                                   color = psrc_colors$purples_inc,
+                                   color = "purples",
                                    width = '420px',
                                    height = '380px')
 
