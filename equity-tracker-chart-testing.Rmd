@@ -3,20 +3,23 @@ title: "Visuals for Equity Tracker"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  pdf_document:
-    toc: yes
-    toc_depth: '6'
-  word_document:
   redoc::redoc: null
 ---
 
 ```{r rmarkdown setup, include=FALSE}
+
+output_type <- "word"
+
 knitr::opts_chunk$set(echo=FALSE, 
                       warning=FALSE, 
                       message=FALSE) # formatting
@@ -624,7 +627,7 @@ data_clean <- data_clean %>%
   arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
 ```
 
-```{r, include=FALSE}
+```{r create-bar-chart, include=FALSE}
 # Create Facet Column Chart
 
 df = data_clean
@@ -654,26 +657,11 @@ chart <- equity_tracker_column_facet(df = df,
                                      esttype = esttype,
                                      color = color)
 
-```
-<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-`r title`
-</p>
-<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-`r subtitle`
-</p>
-```{r bar-chart, echo=FALSE}
-chart
-```
-<p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
-</p> 
-
-```{r output-final-bar-charts, include=FALSE}
-
-base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
+base_dir <- 'C:/coding/output-testing'
 ind_dir <- 'economy'
+file_name <- 'median-income-bar'
 
-# Bar Chart
+# Bar Chart - HTML
 rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
@@ -689,116 +677,35 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
                                 source = source,
                                 subtitle = subtitle,
                                 charttype = charttype),
-                  output_file = 'median-income-bar.html',
+                  output_file = paste0(file_name, '.html'),
                   output_dir = file.path(base_dir,ind_dir))
 
+# Bart Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,ind_dir, paste0(file_name, '.html')), 
+                  file = file.path(base_dir,'static_images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
 
 ```
 
-```{r, include=FALSE}
-# Create Facet Line Chart
-df = data_clean
-geo = "county_ord"
-x = "data_year"
-y = "fact_value"
-fill = "focus_attribute_ord"
-facet = "focus_type_ord"
-y_min = 0
-y_max = 180000
-dec = 0
-esttype = "currency"
-color = "purples"
-title = "Median Household Income"
-subtitle = "values are adjusted to 2021 dollars"
-source = "Source: U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
-charttype = "line"
-
-chart <- equity_tracker_line_facet(df = df,
-                                   geo = geo,
-                                   x = x,
-                                   y = y,
-                                   fill = fill,
-                                   facet = facet,
-                                   title = title,
-                                   y_min = y_min,
-                                   y_max = y_max,
-                                   dec = dec,
-                                   esttype = esttype,
-                                   color = color)
-
-```
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
 `r title`
 </p>
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
 `r subtitle`
 </p>
-```{r line-chart, echo=FALSE}
-chart
+```{r output-bar-chart, echo=FALSE}
+
+if (output_type == "html") {
+
+  chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,'static_images', paste0(file_name, '.png')))
+  
+}
+
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 `r source`
 </p> 
-
-```{r output-final-line-charts, include=FALSE}
-
-base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
-ind_dir <- 'economy'
-
-# Bar Chart
-rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
-                  params = list(df = df,
-                                geo = geo,
-                                x = x,
-                                y = y,
-                                fill = fill,
-                                facet = facet,
-                                y_min = y_min,
-                                y_max = y_max,
-                                dec = dec,
-                                esttype = esttype,
-                                color = color,
-                                title = title,
-                                source = source,
-                                subtitle = subtitle,
-                                charttype = charttype),
-                  output_file = 'median-income-line.html',
-                  output_dir = file.path(base_dir,ind_dir))
-
-
-```
-
-### b.) 
-```{r, include=FALSE}
-# # Elmer equity quintile tracts 
-# equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
-# 
-# # filter for data year of interest
-# equity_tracts_20 <- equity_tracts %>% 
-#   dplyr::filter(data_year==2020)
-# 
-# 
-# # join WTN health data WITH crosswalk to equity quintiles
-# health_risk_equity_tracts <- merge(health_risk_crosswalk, equity_tracts_20,
-#                                    by.x="geoid20",
-#                                    by.y="geoid", # this will need to be adjusted based on the field name
-#                                    all.x=TRUE)
-# 
-# # join WTN health data WIHTOUT crosswalk to equity quintiles
-# health_risk_equity_tracts <- merge(data_csv, equity_tracts_20,
-#                                    by.x="Census.Tract", # this will need to be adjusted based on the field name
-#                                    by.y="geoid", 
-#                                    all.x=TRUE)
-```
-
-```{r, include=FALSE}
-# # Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
-# crosswalk_10_20 <- get_table(schema="census",
-#                              tbl_name="v_geo_relationships_tracts")
-# 
-# # join cleaned tract-level data (in 2010 census tracts) to cross walk (comment out this step if the data is already in 2020 geographies)
-# data_crosswalk <- merge(crosswalk_10_20, data_csv,
-#                         by.x="geoid10",
-#                         by.y="Census.Tract", # this will need to be adjusted based on the field name
-#                         all.x=TRUE)
-```
